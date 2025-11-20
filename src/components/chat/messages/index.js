@@ -16,7 +16,7 @@ const propTypes = {
 
 const defaultProps = {
   currentIndex: 0,
-  setRef: () => {},
+  setRef: () => { },
 };
 
 const Messages = ({
@@ -35,9 +35,9 @@ const Messages = ({
           switch (type) {
             case ID.USERS:
 
-              const indexOfMessageToBeReplied = (item.replyToMessageId) 
+              const indexOfMessageToBeReplied = (item.replyToMessageId)
                 ? storage.messages.findIndex((message) => message.id === item.replyToMessageId) : -1;
-              const messageToBeReplied = (indexOfMessageToBeReplied !== -1) 
+              const messageToBeReplied = (indexOfMessageToBeReplied !== -1)
                 ? storage.messages[indexOfMessageToBeReplied]
                 : null;
               return (
@@ -73,6 +73,8 @@ const Messages = ({
                     responders={item.responders}
                     timestamp={timestamp}
                     type={item.type}
+                    isQuiz={item.isQuiz}
+                    showCorrectAnswer={item.showCorrectAnswer}
                   />
                 </span>
               );
