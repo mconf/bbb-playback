@@ -1,6 +1,7 @@
 import { parseFromString } from './data/xml2json';
 import { files as config } from 'config';
 import { getFileType, caseInsensitiveReducer } from './data';
+import { isTldrawWhiteboard } from './tldraw';
 import {
   hasProperty,
   isEmpty,
@@ -56,6 +57,8 @@ const buildAlternates = result => {
   if (!result) return [];
 
   let data = [];
+  const useSvg = isTldrawWhiteboard();
+
   for (const presentation in result) {
     if (hasProperty(result, presentation)) {
       const slides = result[presentation];
@@ -63,9 +66,12 @@ const buildAlternates = result => {
       for (const slide in slides) {
         if (hasProperty(slides, slide)) {
           const text = slides[slide];
+          const slidepath = slide.replace('-', '');
 
           data.push({
-            src: `presentation/${presentation}/${slide}.png`,
+            src: useSvg
+              ? `presentation/${presentation}/svgs/${slidepath}.svg`
+              : `presentation/${presentation}/${slide}.png`,
             text,
           });
         }
@@ -202,10 +208,10 @@ const buildSlides = image => {
       timestamps.forEach(timestamp => {
         slides.push({
           id: slideId,
-          height: parseInt(img._height),
+          height: parseInt(img._height, 10),
           src,
           timestamp,
-          width: parseInt(img._width),
+          width: parseInt(img._width, 10),
         });
       });
     });
@@ -347,8 +353,13 @@ const buildShapes = result => {
     data.slides = buildSlides(image);
     data.thumbnails = buildThumbnails(data.slides);
     data.canvases = buildCanvases(g, data.slides);
+    data.slides = data.slides.filter(slide => !slide.src.includes(ID.DESKSHARE));
+  } else {
+    data.slides = [];
+    data.thumbnails = [];
+    data.canvases = [];
   }
-  data.slides = data.slides.filter(slide => !slide.src.includes(ID.DESKSHARE));
+
   return data;
 };
 
@@ -391,10 +402,16 @@ const buildLayout = result => {
 
   if (recording?.event) {
     const newData = convertToArray(recording.event).map(layout => {
-      return {
+      const data = {
         timestamp: parseFloat(layout._timestamp),
-        showScreenshare: layout._show_screenshare === 'true',
+      };
+      if (layout._show_screenshare) {
+        data.showScreenshare = layout._show_screenshare === 'true';
       }
+      if (layout._show_presentation) {
+        data.showPresentation = layout._show_presentation === 'true';
+      }
+      return data;
     });
     return newData;
   }
@@ -404,10 +421,11 @@ const buildLayout = result => {
 
 const buildPanzooms = result => {
   let data = [];
+  let tldraw = false;
   const { recording } = result;
 
   if (hasProperty(recording, 'event')) {
-    const tldraw = recording._tldraw === 'true';
+    tldraw = recording._tldraw === 'true';
     data = convertToArray(recording.event).map(panzoom => {
       const viewbox = getNumbers(panzoom.viewBox);
       return {
@@ -418,17 +436,18 @@ const buildPanzooms = result => {
         height: viewbox.shift(),
       };
     });
-    data.tldraw = tldraw;
   }
 
-  return data;
+  return { data, tldraw };
 };
 
 const buildCursor = result => {
   let data = [];
+  let tldraw = false;
   const { recording } = result;
 
   if (hasProperty(recording, 'event')) {
+    tldraw = recording._tldraw === 'true';
     data = convertToArray(recording.event).map(cursor => {
       const position = getNumbers(cursor.cursor);
 
@@ -438,10 +457,9 @@ const buildCursor = result => {
         y: position.shift(),
       };
     });
-    data.tldraw = recording._tldraw === 'true';
   }
 
-  return data;
+  return { data, tldraw };
 };
 
 const getInitials = name => {
@@ -481,7 +499,6 @@ const buildChat = result => {
         clear,
         id: chat._id,
         emphasized,
-        hyperlink: message !== chat._message,
         initials,
         name: chat._name,
         message,
@@ -614,7 +631,7 @@ const addAlternatesToThumbnails = (thumbnails, alternates) => {
   });
 };
 
-const mergeMessages = (chat, polls, questions, videos) => {
+const mergeMessages = (chat = [], polls = [], questions = [], videos = []) => {
   return [
     ...chat,
     ...polls,

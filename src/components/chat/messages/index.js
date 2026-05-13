@@ -51,7 +51,6 @@ const Messages = ({
                     reactions={item.reactions}
                     active={active}
                     emphasized={item.emphasized}
-                    hyperlink={item.hyperlink}
                     initials={item.initials}
                     moderator={item.moderator}
                     name={item.name}
