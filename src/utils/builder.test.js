@@ -32,7 +32,7 @@ it('merges and sorts messages arrays', () => {
   ];
 
 
-  expect(mergeMessages(chat, polls, videos)).toEqual([
+  expect(mergeMessages(chat, polls, questions, videos)).toEqual([
     { timestamp: 3.0, type: 'video' },
     { timestamp: 4.0, type: 'poll' },
     { timestamp: 4.1, type: 'question' },
